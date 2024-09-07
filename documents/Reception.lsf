@@ -1,29 +1,21 @@
 MODULE Reception;
 
-REQUIRE Time, Authentication, AppMenu, Organization;
+REQUIRE Documents, AppMenu, Organization;
+NAMESPACE Documents;
 
-CLASS Reception 'Приходы';
+CLASS Reception 'Приходы' : Document;
 
-number 'Номер' = DATA STRING[10] (Reception) NONULL;
-date 'Дата' = DATA DATE (Reception) NONULL;
 name 'Наименование' = DATA STRING[50] (Reception) NONULL;
-quantity 'Количество' = DATA NUMERIC[10,3] (Reception) NONULL;
 price 'Цена' = DATA NUMERIC[10,2] (Reception) NONULL;
-userDate 'Дата ввода' = DATA DATE (Reception);
-userName 'Пользователь' = DATA STRING[50] (Reception);
+
+//композиция
+suplier = DATA Organization(Reception);
+organizationName 'Поставщик' (Reception o) = name(suplier(o));
 
 // контроль данных
 unique = GROUP AGGR Reception o BY number(o), date(o), name(o);
-CONSTRAINT quantity(Reception o) > 1000 OR quantity(o) <= 0 MESSAGE 'Недопустимое количество';
-
-WHEN SET(Reception o IS Reception) AND NOT userDate(o) DO userDate(o) <- currentDate();
-WHEN SET(Reception o IS Reception) AND NOT userName(o) DO userName(o) <- STRING[50](name(currentUser()));
-
-organization = DATA Organization (Reception);
-organizationName 'Поставщик' (Reception o) = name(organization(o));
-
-CONSTRAINT SETCHANGED(organization(Reception o)) AND NOT organizationType(organization(o)) = OrganizationType.supplier
-    CHECKED BY organization[Reception] MESSAGE 'Для приходной накладной организация должна быть поставщиком';
+CONSTRAINT SETCHANGED(suplier(Reception o)) AND NOT organizationType(suplier(o)) = OrganizationType.supplier
+    CHECKED BY suplier[Reception] MESSAGE 'Для приходной накладной организация должна быть поставщиком';
 
 FORM editReception 'Приход'
     OBJECTS r = Reception PANEL // опция panel - только одна запись
@@ -39,6 +31,12 @@ DESIGN editReception {
             height = 60;
             MOVE PROPERTY (number(r));
             MOVE PROPERTY (date(r));
+        }
+        NEW cntOrg{
+            horizontal = TRUE ;
+            caption = 'Поставщик';
+            height = 60;
+            MOVE PROPERTY (organizationName(r)) {caption = 'Фирма';}
         }
         NEW cntRow {
             horizontal = FALSE ;

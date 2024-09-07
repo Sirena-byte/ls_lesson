@@ -1,0 +1,73 @@
+MODULE Expenses;
+
+REQUIRE Documents, AppMenu, Organization, Reception, Utils;
+NAMESPACE Documents;
+
+CLASS Expenses 'Расходы' : Document;
+
+//так как товар и цена берутся из прихода, то нужна композиция
+reception 'ID' = DATA Reception (Expenses) NONULL ;
+name 'Наименование'(Expenses o) = name(reception(o));
+price 'Цена'(Expenses o) = round(1.1 * price(reception(o)),2);//1,1 - оптовая надбавка , встроенная функция платформы round из модуля Utils для выполнения округления до 2-х знаков
+
+//композиция
+customer = DATA Organization(Expenses);
+organizationName 'Покупатель' (Expenses o) = name(customer(o));
+
+// контроль данных
+allExpenses (Reception r) = GROUP SUM quantity(Expenses e) BY reception(e) MATERIALIZED ;// суммируем все расходы, связанные с текущей позицией товара . св-во MATERIALISD зафиксирует расчет в отдельной колонке в базе данных
+balance 'Остаток' (Reception r) = quantity(r) (-) allExpenses(r);// и от количества по приходу(allExpenses) отнять текущий остаток
+CONSTRAINT SETCHANGED(customer(Expenses o)) AND NOT organizationType(customer(o)) = OrganizationType.customer
+    CHECKED BY customer[Expenses] MESSAGE  'Для расходной накладной организация должна быть покупателем';
+
+FORM editExpenses 'Расход'
+    OBJECTS e = Expenses PANEL // опция panel - только одна запись
+    PROPERTIES (e) number, date, organizationName, name, quantity, price
+    EDIT Expenses OBJECT e
+;
+
+FORM viewExpensees 'Расходы'
+    OBJECTS e = Expenses
+    PROPERTIES (e) READONLY number, date, organizationName, name, quantity, price, userName, userDate
+    PROPERTIES (e) NEWSESSION NEW , EDIT , DELETE 
+    ORDERS date(e), number(e)
+    ;
+
+DESIGN editExpenses {
+    OBJECTS {
+        NEW cntDoc {
+            horizontal = TRUE; // распределяем элементы слева-направо-сверху-вниз
+            caption = 'Накладная';
+            height = 60;
+            MOVE PROPERTY (number(e));
+            MOVE PROPERTY (date(e));
+        }
+        NEW cntOrg{
+            horizontal = TRUE ;
+            caption = 'Покупатель';
+            height = 60;
+            MOVE PROPERTY (organizationName(e)) {caption = 'Магазин';}
+        }
+        NEW cntRow {
+            horizontal = FALSE ;
+            caption = 'Строки накладной';
+            MOVE PROPERTY (name(e));
+            MOVE PROPERTY (quantity(e));
+            MOVE PROPERTY (price(e));
+        }
+    }
+}
+
+FORM listReception 'Остатки'//форма выбора остатков для списания
+    OBJECTS r = Reception // опция по умолчанию GRID    
+    PROPERTIES (r) READONLY name, quantity, price, balance
+    LIST Reception OBJECT r
+    FILTERS balance(r)
+;
+
+
+NAVIGATOR {
+    documents {
+        NEW FORM viewExpensees;
+    }
+}

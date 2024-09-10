@@ -1,7 +1,7 @@
 MODULE Reception;
 
 // 1. Необходимые для работы модули 
-REQUIRE Documents, AppMenu, Organization;
+REQUIRE Documents, AppMenu, Organization, Product, Unit;
 
 // 2. Задаем общее пространство имен для всех документов
 NAMESPACE Documents;
@@ -20,6 +20,11 @@ price 'Цена' = DATA NUMERIC[10,2] (Reception) NONULL;
 supplier = DATA Organization (HeaderReception);
 organizationName 'Поставщик' (HeaderReception o) = name(supplier(o));
 
+product 'ID товара' = DATA Product(Reception) NONULL ;
+unit 'ID едениц измерения' = DATA Unit (Reception) NONULL ;
+nameProduct 'Наименование товара' (Reception o) = name(product(o));
+nameUnit 'Ед. изм.' (Reception o) = name(unit(o));
+
 // 5. Контроль данных
 CONSTRAINT SETCHANGED(supplier(HeaderReception o)) AND NOT organizationType(supplier(o)) = OrganizationType.supplier
     CHECKED BY supplier[HeaderReception] MESSAGE 'Для приходной накладной организация должна быть поставщиком';
@@ -31,7 +36,7 @@ CONSTRAINT SETCHANGED(supplier(HeaderReception o)) AND NOT organizationType(supp
         OBJECTS h = HeaderReception PANEL // редактирование заголовка
         PROPERTIES (h) number, date, organizationName
         OBJECTS r = Reception // редактирование строк
-        PROPERTIES (r) name, quantity, price
+        PROPERTIES (r) name, nameProduct, nameUnit, quantity, price
         PROPERTIES (r) NEW, DELETE
         EDIT HeaderReception OBJECT h
         FILTERS header(r) = h
@@ -44,12 +49,16 @@ CONSTRAINT SETCHANGED(supplier(HeaderReception o)) AND NOT organizationType(supp
         PROPERTIES (h) READONLY number, date, organizationName, userName, userDate
         PROPERTIES (h) NEWSESSION NEW, EDIT, DELETE
         OBJECTS r = Reception
-        PROPERTIES (r) READONLY name, quantity, price
+        PROPERTIES (r) READONLY name, nameProduct, nameUnit, quantity, price
         FILTERS header(r) = h
         ORDERS date(h), number(h)
     ;
-    // панель кнопок редактирования шапки передвигаем в панель редактирования строк     
-    DESIGN viewReception { TOOLBARRIGHT (r) { MOVE TOOLBARRIGHT (h); }}
+    // панель кнопок редактирования шапки передвигаем в панель редактирования строк   
+    //ограничиваем ширину колонки едениц измерения
+    DESIGN viewReception { 
+        TOOLBARRIGHT (r) { MOVE TOOLBARRIGHT (h); }
+        PROPERTY (nameUnit(r)) {charWidth = 10;}
+    }
     NAVIGATOR {
         documents {
             NEW FORM viewReception;

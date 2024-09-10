@@ -37,11 +37,12 @@ META forms(object, title1, title2, title3)
         OBJECTS h = Header##object PANEL // редактирование заголовка
         PROPERTIES (h) number, date, organizationName
         OBJECTS r = object // редактирование строк
-        PROPERTIES (r) name, quantity, price
+        PROPERTIES (r) name, nameProduct, nameUnit, quantity, price
         PROPERTIES (r) NEW, DELETE
         EDIT Header##object OBJECT h
         //Если необходимо связать на отображении заголовки со строками так, чтобы свой заголовок "видел" свои строки, на форме используется фиксированный фильтр
         FILTERS header(r) = h
+        //на форме редактирования наличие фиксированного фильтра "подскажет" форме, что при сохранении данных свойство header всех строк должно получить ссылку на заголовок редактируемого документа.
     ;
     // порядок следования объектов при описании формы определяет порядок следования их
     //на форме;
@@ -56,12 +57,16 @@ META forms(object, title1, title2, title3)
         PROPERTIES (h) READONLY number, date, organizationName, userName, userDate
         PROPERTIES (h) NEWSESSION NEW, EDIT, DELETE
         OBJECTS r = object
-        PROPERTIES (r) READONLY name, quantity, price
+        PROPERTIES (r) READONLY name, nameProduct, nameUnit, quantity, price
         FILTERS header(r) = h
         ORDERS date(h), number(h)
     ;
     // панель кнопок редактирования шапки передвигаем в панель редактирования строк     
-    DESIGN view##object { TOOLBARRIGHT (r) { MOVE TOOLBARRIGHT (h); }}
+    DESIGN view##object{
+    TOOLBARRIGHT (r){ MOVE TOOLBARRIGHT (h); }
+        PROPERTY (nameUnit(r)) {charWidth = 10;}
+    }
+        
     NAVIGATOR {
         documents {
             NEW FORM view##object;

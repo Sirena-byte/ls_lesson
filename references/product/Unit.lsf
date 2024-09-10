@@ -1,0 +1,7 @@
+MODULE Unit;
+
+REQUIRE RForms;
+
+CLASS Unit 'Еденицы измерения';
+
+@rforms(Unit, products, 'Справочник ЕИ');

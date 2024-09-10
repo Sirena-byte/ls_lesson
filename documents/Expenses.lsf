@@ -22,6 +22,9 @@ price 'Цена' (Expenses o) = round(1.1 * price(reception(o)),2); // 1.1 - о�
 customer = DATA Organization (HeaderExpenses);
 organizationName 'Покупатель' (HeaderExpenses o) = name(customer(o));
 
+nameProduct 'Наименование'(Expenses o) = nameProduct(reception(o));
+nameUnit 'Ед. изм.' (Expenses o) = nameUnit(reception(o));
+
 // 5. Контроль данных и вычисления остатка
 allExpenses  (Reception r) = GROUP SUM quantity(Expenses e) BY reception(e) MATERIALIZED;
 balance 'Остаток' (Reception r) = quantity(r) (-) allExpenses(r);
@@ -36,7 +39,7 @@ CONSTRAINT SETCHANGED(customer(HeaderExpenses o)) AND NOT organizationType(custo
         OBJECTS h = HeaderExpenses PANEL // редактирование заголовка
         PROPERTIES (h) number, date, organizationName
         OBJECTS r = Expenses // редактирование строк
-        PROPERTIES (r) name, quantity, price
+        PROPERTIES (r) name, nameProduct, nameUnit, quantity, price
         PROPERTIES (r) NEW, DELETE
         EDIT HeaderExpenses OBJECT h
         FILTERS header(r) = h
@@ -49,12 +52,16 @@ CONSTRAINT SETCHANGED(customer(HeaderExpenses o)) AND NOT organizationType(custo
         PROPERTIES (h) READONLY number, date, organizationName, userName, userDate
         PROPERTIES (h) NEWSESSION NEW, EDIT, DELETE
         OBJECTS r = Expenses
-        PROPERTIES (r) READONLY name, quantity, price
+        PROPERTIES (r) READONLY name, nameProduct, nameUnit, quantity, price
         FILTERS header(r) = h
         ORDERS date(h), number(h)
     ;
-    // панель кнопок редактирования шапки передвигаем в панель редактирования строк     
-    DESIGN viewExpenses { TOOLBARRIGHT (r) { MOVE TOOLBARRIGHT (h); }}
+    // панель кнопок редактирования шапки передвигаем в панель редактирования строк   
+    //и ограничиваем ширину колонки едениц измерения
+    DESIGN viewExpenses {
+        TOOLBARRIGHT (r) { MOVE TOOLBARRIGHT (h); }
+        PROPERTY (nameUnit(r)) {charWidth= 10;}
+    }
     NAVIGATOR {
         documents {
             NEW FORM viewExpenses;
@@ -65,7 +72,10 @@ CONSTRAINT SETCHANGED(customer(HeaderExpenses o)) AND NOT organizationType(custo
 // 6. форма выбора остатков
 FORM listReception 'Остатки'
     OBJECTS r = Reception
-    PROPERTIES (r) READONLY name, price, quantity, balance
+    PROPERTIES (r) READONLY name, nameProduct, nameUnit, price, quantity, balance
     LIST Reception OBJECT r
     FILTERS balance(r)
 ;
+
+//ограничиваем ширину колонки ед. изм.
+DESIGN listReception {PROPERTY (nameUnit(r)) {charWidth=10;}}

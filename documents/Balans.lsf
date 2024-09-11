@@ -1,0 +1,37 @@
+MODULE Balans;
+
+REQUIRE Expenses, Group,AppMenu;
+
+// Определяем свойство 'Дата прихода' для объекта Reception
+date 'Дата прихода' (Reception o) = date(header(o)) CHARWIDTH 10;
+// Свойство date возвращает дату заголовка объекта Reception и ограничивает ширину отображения до 10 символов.
+
+FORM viewBalance 'Журнал остатков'
+    TREE groups g = Group PARENT parent(g) // Создает дерево групп, где g — переменная для групп. Устанавливает, что группы являются родительскими.
+    PROPERTIES READONLY name(g)
+    OBJECTS r = Reception //Определяет объекты r типа Reception, которые будут отображены в форме.
+    PROPERTIES (r) READONLY nameProduct, nameUnit, price, date,quantity, allExpenses, balance
+    FILTERS level(group(product(r)), g) // Устанавливает фильтр, который ограничивает отображение объектов Reception по уровню группы продукта
+    ;
+
+DESIGN viewBalance{
+    OBJECTS {
+        //При наличии нескольких объектов на форме, по умолчанию табличные (панельные) части располагаются друг за другом вертикально, в порядке описания объектов. Поэтому, чтобы расположить контейнеры объектов горизонтально, необходимо исправить дизайн формы: создать новый контейнер (pane), задать для свойства horizontal = TRUE, переместить туда контейнеры BOX(TREE groups) и BOX(r).
+        NEW pane{ // Создаем новую панель для размещения элементов интерфейса
+            fill = 1; // Задаем заполнение панели
+            horizontal = TRUE ;
+            MOVE BOX (TREE groups) {fill = 1; caption = 'Группы';} // Перемещаем дерево групп на панель с заголовком 'Группы'
+            MOVE BOX (r) {fill = 20; caption = 'Остатки';} // Перемещаем остатки на панель с заголовком 'Остатки'
+        }
+    }
+    PROPERTY (nameUnit(r)){charWidth = 10;}
+    PROPERTY (quantity(r)){caption = 'Приход'; charWidth = 10;}
+    PROPERTY (allExpenses(r)){caption = 'Расход'; charWidth = 10;}
+    PROPERTY (balance(r)){charWidth = 10;}
+}
+
+NAVIGATOR {
+    documents{
+        NEW FORM viewBalance;
+    }
+}

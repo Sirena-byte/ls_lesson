@@ -55,7 +55,7 @@ DESIGN viewBalance {
     pane {caption = 'Группы';}
     OBJECTS {
         NEW tabbed {//имя может быть любое
-            tabbed = TRUE; // опция задает вкладки
+            tabbed = TRUE; // задает вкладки
             fill = 1;
             MOVE pane; // перемещаем контейнер дерево и остатки
             NEW  pane2 { // контейнер организаций и остатков

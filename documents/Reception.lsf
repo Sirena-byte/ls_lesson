@@ -65,6 +65,7 @@ CONSTRAINT SETCHANGED(supplier(HeaderReception o)) AND NOT organizationType(supp
         }
     }
 };
+
 //вызываем метакод 
 //расчет итогов
 // Расчет итогов
@@ -105,5 +106,6 @@ CONSTRAINT SETCHANGED(supplier(HeaderReception o)) AND NOT organizationType(supp
         }
     }
 };
+
 
 

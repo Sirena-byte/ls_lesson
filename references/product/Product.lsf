@@ -1,0 +1,15 @@
+MODULE Product;
+
+REQUIRE RForms, Group;
+
+
+CLASS Product 'Товары';
+
+@rforms(Product, products, 'Справочник товаров');
+
+group 'ID группы' = DATA Group (Product) NONULL ;
+groupName 'Группа' (Product o) = name(group(o));
+
+EXTEND FORM editProduct PROPERTIES (o) groupName;
+EXTEND FORM viewProduct PROPERTIES (o) READONLY groupName ORDERS groupName(o), name(o);
+EXTEND FORM listProduct PROPERTIES (o) NEWSESSION NEW ;

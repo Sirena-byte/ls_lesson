@@ -1,0 +1,29 @@
+MODULE Group;
+
+REQUIRE RForms;
+
+CLASS Group 'Товарные группы';
+
+
+//@rforms(Group, products, 'Справочник товарных групп');
+//Указывает, что для класса Group будет создан интерфейс с формами для работы с группами. products может быть именем связанного объекта.
+@rforms(Group, products, 'Справочник товарных групп'); // Создаем интерфейс для работы с товарными группами
+
+//parent = DATA Group (Group);
+//Определяет свойство parent, которое ссылается на родительскую группу типа Group. Это свойство используется для построения иерархии групп.
+// Определяем свойство parent типа Group, которое указывает на родительскую группу
+parent = DATA Group (Group); // Свойство parent для указания родительской группы
+
+// Определяем свойство nameParent для получения имени родительской группы
+nameParent 'Родительская группа' (Group g) = name(parent(g)); // Возвращает имя родительской группы //Определяет свойство nameParent, которое возвращает имя родительской группы для указанной группы g.
+
+//Определяет свойство level, которое вычисляет уровень вложенности группы. Используется рекурсия для определения уровня.
+level 'Уровень' (Group child, Group parent) =
+    RECURSION 1l IF child IS Group AND parent = child STEP 2l  //Условие для рекурсивного определения уровня. Если child является группой и совпадает с parent, то уровень увеличивается на 2.
+    IF parent = parent($parent) MATERIALIZED ; //Условие для материализации уровня вложенности, которое проверяет, является ли parent равным родительскому элементу.
+canonicalName 'Каноническое имя' (Group group) = GROUP CONCAT name(Group parent), //Определяет свойство canonicalName, которое формирует полное имя группы, соединяя имена всех родительских групп и текущей группы.
+    ' / ' ORDER DESC level(group, parent) CHARWIDTH 100;
+
+EXTEND FORM editGroup PROPERTIES (o) nameParent; //Расширяет форму редактирования группы, добавляя свойство nameParent, которое будет отображаться в форме
+EXTEND FORM listGroup PROPERTIES (o) READONLY nameParent; //Расширяет форму списка групп, добавляя свойство nameParent, доступное только для чтения.
+EXTEND FORM viewGroup PROPERTIES (o) READONLY nameParent, canonicalName ORDERS canonicalName(o); //Расширяет форму просмотра группы, добавляя свойства nameParent и canonicalName, которые доступны только для чтения. Также указывает, что результаты будут упорядочены по каноническому имени

@@ -1,39 +1,56 @@
 MODULE Organization;
 
-REQUIRE AppMenu;
+REQUIRE AppMenu, RForms;
 
 CLASS OrganizationType 'Тип организации' {
     supplier 'Поставщик', customer 'Покупатель'
 }
 
 CLASS Organization 'Организации';
-name 'Организация' = DATA STRING[50] (Organization) NONULL ;
+@rforms(Organization, references, 'Справочник организаций'){
+    name 'Наименование' = DATA STRING[100] (Organization) NONULL; // общее свойство
+    unique = GROUP AGGR Object o BY upper(name(o)); // контроль уникальности
+    FORM editOrganization 'Редактирование'
+        OBJECTS o = Organization PANEL
+        PROPERTIES (o) name
+        EDIT Organization OBJECT o
+    ;
+    FORM listOrganization 'Поиск'
+        OBJECTS o = Organization
+        PROPERTIES (o) READONLY name
+        LIST Organization OBJECT o
+    ;
+    FORM viewOrganization 'Справочник организаций'
+        OBJECTS o = Organization
+        PROPERTIES (o) READONLY name
+        PROPERTIES (o) NEWSESSION NEW, EDIT, DELETE
+    ;
+    NAVIGATOR {
+        references {
+            NEW FORM viewOrganization;
+        }
+    }
+};
+
 
 organizationType 'ID' = DATA OrganizationType (Organization) NONULL;
 organizationTypeName 'Тип организации' (Organization o) = staticCaption(organizationType(o));
 
-FORM viewOrgaization 'Организации'
-    OBJECTS o = Organization
-    PROPERTIES (o) READONLY name, organizationTypeName
-    PROPERTIES (o) NEWSESSION NEW, EDIT, DELETE
-;
+EXTEND FORM editOrganization PROPERTIES (o) organizationTypeName;
+EXTEND FORM viewOrganization PROPERTIES (o) READONLY organizationTypeName;
+EXTEND FORM listOrganization PROPERTIES (o) READONLY organizationTypeName;
 
-FORM editOrgaization 'Организация'
-    OBJECTS o = Organization PANEL
-    PROPERTIES (o) name, organizationTypeName
-    EDIT Organization OBJECT o
-;
+//доработка под скидку
+discount 'Скидка' = DATA NUMERIC[6,2](Organization);
+CONSTRAINT discount(Organization o) > 5
+    MESSAGE 'Недопустимый размер скидки\nРазмер скидки не более 5%';
 
-FORM listOrgaization 'Организации'
-    OBJECTS o = Organization
-    PROPERTIES (o) READONLY name
-    LIST Organization OBJECT o
-;
+EXTEND FORM editOrganization PROPERTIES (o) discount;
+EXTEND FORM viewOrganization PROPERTIES (o) READONLY discount;
 
-NAVIGATOR {
-    move {
-        NEW FOLDER directory 'Справочники' {
-            NEW FORM viewOrgaization;
-        }
-    }
-}
+
+
+
+
+
+

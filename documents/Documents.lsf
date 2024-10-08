@@ -1,0 +1,116 @@
+MODULE Documents;
+
+REQUIRE Time, Authentication, Organization;
+
+CLASS ABSTRACT Header 'Заголовки документа';
+
+number 'Номер'  = DATA STRING[10] (Header) NONULL;
+date 'Дата' = DATA DATE (Header) NONULL;
+userDate 'Дата ввода' = DATA DATE (Header);
+userName 'Пользователь' = DATA STRING[50] (Header);
+
+// автозаполнение
+WHEN SET (Header o IS Header) AND NOT userDate(o) DO userDate(o) <- currentDate();
+WHEN SET (Header o IS Header) AND NOT userName(o) DO userName(o) <- STRING[50](currentUserName());
+
+// новое: определяем уникальность документа
+unique = GROUP AGGR Header o BY number(o), date(o);
+
+CLASS ABSTRACT Row 'Строки документа';
+
+quantity 'Количество' = DATA NUMERIC[10,3] (Row) NONULL;
+
+// новое: связываем строки документа с его заголовком . при этом добавляем ограничение nonull delete, которое работает таким образом, что при удалении шапки документа, удалятся и все его строки
+header 'ID шапки' = DATA Header (Row) NONULL DELETE;
+
+// контроль данных
+CONSTRAINT quantity(Row o) > 1000 OR quantity(o) <= 0 MESSAGE 'Недопустимое количество';
+
+
+
+// META код
+META forms(object, title1, title2, title3)
+    // форма редактирования
+    //первый объект (класса Header) отображается с опцией PANEL - то есть текущая редактируемая запись, а объект строк (класса Row) отображается как табличная часть (GRID) набора записей строк, связанных с шапкой документа;
+    //● на форме редактирования наличие фиксированного фильтра "подскажет" форме, что при сохранении данных свойство header всех строк должно получить ссылку на заголовок редактируемого документа.
+    FORM edit##object title1
+        OBJECTS h = Header##object PANEL // редактирование заголовка
+        PROPERTIES (h) number, date, organizationName
+        OBJECTS r = object // редактирование строк
+        PROPERTIES (r) name, nameProduct, nameUnit, quantity, price
+        PROPERTIES (r) NEW, DELETE
+        EDIT Header##object OBJECT h
+        //Если необходимо связать на отображении заголовки со строками так, чтобы свой заголовок "видел" свои строки, на форме используется фиксированный фильтр
+        FILTERS header(r) = h
+        //на форме редактирования наличие фиксированного фильтра "подскажет" форме, что при сохранении данных свойство header всех строк должно получить ссылку на заголовок редактируемого документа.
+    ;
+    // порядок следования объектов при описании формы определяет порядок следования их
+    //на форме;
+    //● количество объектов на форме не ограничено;
+    //● опция LAST используется для того, чтобы указать, что при открытии формы отображения указатель должен стоять на последней записи.
+        
+    // подправляем заголовок свойства для разных форм редактирования    
+    DESIGN edit##object { PROPERTY (organizationName(h)) {caption = title3;} }
+    // форма отображения
+    FORM view##object title2
+        OBJECTS h = Header##object LAST
+        PROPERTIES (h) READONLY number, date, organizationName, userName, userDate
+        PROPERTIES (h) NEWSESSION NEW, EDIT, DELETE
+        OBJECTS r = object
+        PROPERTIES (r) READONLY name, nameProduct, nameUnit, quantity, price
+        FILTERS header(r) = h
+        ORDERS date(h), number(h)
+    ;
+    // панель кнопок редактирования шапки передвигаем в панель редактирования строк     
+    DESIGN view##object{
+    TOOLBARRIGHT (r){ MOVE TOOLBARRIGHT (h); }
+        PROPERTY (nameUnit(r)) {charWidth = 10;}
+    }
+        
+    NAVIGATOR {
+        documents {
+            NEW FORM view##object;
+        }
+    }
+END 
+
+//метакод 
+META totalValues(object)
+    index 'Nпп' (object r) = PARTITION SUM 1 ORDER r BY header(r) CHARWIDTH 3;
+    cost 'Стоимость' (object r) = NUMERIC[10,2](round(quantity(r) * price(r),2)); // по строке
+    amount 'Сумма' (Header##object h) = GROUP SUM cost(object r) IF header(r) = h;
+    count 'Количество' (Header##object h) = GROUP SUM quantity(object r) IF header(r) = h;
+    cntpos 'Всего позиций' (Header##object h) = GROUP SUM 1 IF header(object r) = h;
+    amountDay 'Сумма' (Header##object h) = PARTITION SUM(amount(h)) BY date(h);
+    // форма отображения    
+    EXTEND FORM view##object
+        PROPERTIES (h) READONLY amount AFTER organizationName(h)
+        PROPERTIES (r) READONLY index FIRST, cost
+        OBJECTS h2 = Header##object PANEL // информационная панель
+        PROPERTIES(h2) READONLY amount, count, cntpos, amountDay, date
+        FILTERS h2=h;
+    // исправляем дизайн: итоги по документу, итоги за день    
+    DESIGN view##object {
+        PANEL {
+            NEW pane {
+                horizontal = TRUE;
+                fill = 1;
+                NEW totalCurrent {
+                    horizontal = TRUE;
+                    caption = 'Итоги по документу';
+                    MOVE PROPERTY (amount(h2)) {background = RGB(255, 204, 204);}
+                    MOVE PROPERTY (count(h2)) {background = RGB(255, 204, 204);}
+                    MOVE PROPERTY (cntpos(h2)) {background = RGB(255, 204, 204);}
+                }
+                NEW totalDay {
+                    horizontal = TRUE;
+                    caption = 'Итоги за день';
+                    MOVE PROPERTY (date(h2)) {background = RGB(204, 255, 204);}
+                    MOVE PROPERTY (amountDay(h2)) {background = RGB(204, 255, 204);marginLeft = 20;}
+                }
+            }
+        }
+    }
+END;    
+
+
